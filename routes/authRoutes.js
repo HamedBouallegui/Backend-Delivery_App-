@@ -2,6 +2,7 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const auth = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -79,6 +80,78 @@ router.post('/login', async (req, res) => {
       },
       token
     });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Admin: Get all users (CLIENT and COMMERCANT)
+router.get('/users', auth('ADMIN'), async (req, res) => {
+  console.log('✅ HIT /api/auth/users for admin', req.user?.id);
+  try {
+    const { role } = req.query;
+    const query = {};
+    
+    // Filter by role if provided, otherwise get CLIENT and COMMERCANT
+    if (role) {
+      query.role = role;
+    } else {
+      query.role = { $in: ['CLIENT', 'COMMERCANT'] };
+    }
+    
+    const users = await User.find(query)
+      .select('-passwordHash') // Don't send password hash
+      .sort({ createdAt: -1 });
+    
+    console.log(`Found ${users.length} users`);
+    res.json(users);
+  } catch (error) {
+    console.error('❌ Error in /users route:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Admin: Update user (approve/disable)
+router.put('/users/:id', auth('ADMIN'), async (req, res) => {
+  try {
+    const { isApproved, role } = req.body;
+    const updateData = {};
+    
+    if (isApproved !== undefined) {
+      updateData.isApproved = isApproved;
+    }
+    if (role && ['CLIENT', 'COMMERCANT'].includes(role)) {
+      updateData.role = role;
+    }
+    
+    const user = await User.findByIdAndUpdate(
+      req.params.id,
+      { $set: updateData },
+      { new: true }
+    ).select('-passwordHash');
+    
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    res.json(user);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Admin: Delete user
+router.delete('/users/:id', auth('ADMIN'), async (req, res) => {
+  try {
+    const user = await User.findByIdAndDelete(req.params.id);
+    
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    res.json({ message: 'User deleted successfully' });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Server error' });

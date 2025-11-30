@@ -1,0 +1,21 @@
+STEP 1: STOP the current server
+- Find the terminal where backend is running
+- Press Ctrl + C
+
+STEP 2: START the server again
+cd backend_app
+node index.js
+
+OR
+
+npm start
+
+STEP 3: Verify you see these logs:
+- "orderRoutes.js loaded"
+- "Routes registered: ..."
+- "Server running on http://localhost:5000"
+
+STEP 4: Test the route
+Try: http://localhost:5000/api/commandes/test (should work)
+Then test your Flutter app again
+

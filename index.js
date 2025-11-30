@@ -28,6 +28,13 @@ app.use("/api/produits", productRoutes);
 app.use("/api/commandes", orderRoutes);
 app.use("/api/livreurs", livreurRoutes);
 
+// Log registered routes for debugging
+console.log('✅ Routes registered:');
+console.log('  - /api/auth');
+console.log('  - /api/produits');
+console.log('  - /api/commandes (including /my, /available, /my-deliveries)');
+console.log('  - /api/livreurs');
+
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });

@@ -4,6 +4,7 @@ const Product = require('../models/Product');
 const auth = require('../middleware/auth');
 
 const router = express.Router();
+console.log('orderRoutes.js loaded');
 
 const formatOrder = (order) => {
   if (!order) return null;
@@ -97,6 +98,58 @@ router.post('/', auth('CLIENT'), async (req, res) => {
   }
 });
 
+// ========== STATIC ROUTES (must come before parameterized routes) ==========
+
+// Debug route to test route registration (remove after testing)
+router.get('/test', (req, res) => {
+  res.json({ message: 'Route registration working!', path: req.path });
+});
+
+// Client: get all orders placed by current user
+router.get('/my', auth('CLIENT'), async (req, res) => {
+  console.log('✅ HIT /api/commandes/my for client', req.user?.id);
+  try {
+    const orders = await Order.find({ client: req.user.id })
+      .populate('merchant', 'name')
+      .populate('client', 'name phone');
+
+    res.json(orders.map(formatOrder));
+  } catch (error) {
+    console.error('❌ Error in /my route:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Delivery driver: get available orders (status ACCEPTED)
+router.get('/available', auth('LIVREUR'), async (req, res) => {
+  try {
+    const orders = await Order.find({ status: 'ACCEPTED' })
+      .populate('merchant', 'name')
+      .populate('client', 'name phone');
+
+    res.json(orders.map(formatOrder));
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Delivery driver: get orders assigned to current driver
+router.get('/my-deliveries', auth('LIVREUR'), async (req, res) => {
+  try {
+    const orders = await Order.find({ livreur: req.user.id })
+      .populate('merchant', 'name')
+      .populate('client', 'name phone');
+
+    res.json(orders.map(formatOrder));
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// ========== PARAMETERIZED ROUTES (must come after static routes) ==========
+
 // Generic status update respecting allowed flow
 router.put('/:id/status', auth(), async (req, res) => {
   try {
@@ -160,20 +213,6 @@ router.get('/:id/track', auth(), async (req, res) => {
   }
 });
 
-// Delivery driver: get available orders (status ACCEPTED)
-router.get('/available', auth('LIVREUR'), async (req, res) => {
-  try {
-    const orders = await Order.find({ status: 'ACCEPTED' })
-      .populate('merchant', 'name')
-      .populate('client', 'name phone');
-
-    res.json(orders.map(formatOrder));
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Server error' });
-  }
-});
-
 // Delivery driver: assign order to current driver (status ASSIGNED)
 router.put('/:id/assign', auth('LIVREUR'), async (req, res) => {
   try {
@@ -190,20 +229,6 @@ router.put('/:id/assign', auth('LIVREUR'), async (req, res) => {
     }
 
     res.json(formatOrder(order));
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Server error' });
-  }
-});
-
-// Delivery driver: get orders assigned to current driver
-router.get('/my-deliveries', auth('LIVREUR'), async (req, res) => {
-  try {
-    const orders = await Order.find({ livreur: req.user.id })
-      .populate('merchant', 'name')
-      .populate('client', 'name phone');
-
-    res.json(orders.map(formatOrder));
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Server error' });
